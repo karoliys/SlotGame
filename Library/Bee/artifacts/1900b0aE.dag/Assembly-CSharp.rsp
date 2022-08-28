@@ -381,6 +381,7 @@
 "Assets/Scripts/ReelsScroll.cs"
 "Assets/Scripts/SymbolData.cs"
 "Assets/Scripts/SymbolsMove.cs"
+"Assets/Scripts/WinLineData.cs"
 -langversion:9.0
 
 /deterministic

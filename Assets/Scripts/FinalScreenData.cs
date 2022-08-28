@@ -6,9 +6,5 @@ using UnityEngine;
 public class FinalScreenData : ScriptableObject
 {
     [SerializeField] private int[] finalSymbol;
-    [SerializeField] private int[] winsSymbol;
-
     public int[] FinalSymbol => finalSymbol;
-
-    public int[] WinsSymbol  => winsSymbol;
 }

@@ -10,16 +10,16 @@ public class SymbolsMove : MonoBehaviour
     [SerializeField] private GameConfig gameConfig;
     [SerializeField] private float movementCoordinate;
     [SerializeField] private int idReel;
-    [SerializeField] private LineRenderer winLine;
     [SerializeField] private float scaleAnimation;
+    [SerializeField] private int countAnimation;
     [SerializeField] private float timeAnimation;
 
     private Queue<Sprite> stopSprites = new Queue<Sprite>();
-    private int? winSprite;
-    private RectTransform winSymbol;
+    private Queue<int> nubmerOfWinSymbol = new Queue<int>();
     private float symbolSize;
     private int countSymbols;
     private Dictionary<RectTransform, Image> symbolsImage = new Dictionary<RectTransform, Image>();
+    private Dictionary<int, RectTransform> symbolsRectTransform = new Dictionary<int, RectTransform>();
     private bool setRandom = true;
     private int curentFinalScreen = 0;
     private int curentWinSprite = 0;
@@ -70,31 +70,17 @@ public class SymbolsMove : MonoBehaviour
     }
     void ChangeImageStop(RectTransform symbol)
     {
+        symbolsRectTransform.Add(curentWinSprite, symbol);
         var symbolSprite = symbolsImage[symbol];
         symbolSprite.sprite = stopSprites.Dequeue();
-        if (winSprite == curentWinSprite)
-        {
-            winSymbol = symbol;
-            winLine.positionCount++;
-            curentWinSprite++;
-        }
-        else
-        {
-            curentWinSprite++;
-        }
+        curentWinSprite++;
     }
 
     public void SetWinSprites()
     {
         stopSprites.Clear();
-        if (gameConfig.FinalScreens[curentFinalScreen].WinsSymbol.Length > 0)
-        {
-            winSprite = gameConfig.FinalScreens[curentFinalScreen].WinsSymbol[idReel];
-        }
-        else
-        {
-            winSprite = null;
-        }
+        curentWinSprite = 0;
+        symbolsRectTransform.Clear();
         for (int i = 0; i < countSymbols - 1; i++)
         {
             stopSprites.Enqueue(gameConfig.Symbols[gameConfig.FinalScreens[curentFinalScreen].FinalSymbol[idReel * (countSymbols - 1) + i]].SymbolImage);
@@ -112,70 +98,48 @@ public class SymbolsMove : MonoBehaviour
     public void ResetLocalPosition(float changePositionOn)
     {
         setRandom = true;
-        curentWinSprite = 0;
         foreach (var symbol in symbols)
         {
             symbol.localPosition = new Vector3(symbol.localPosition.x, symbol.localPosition.y + changePositionOn);
         }
     }
 
-    public void SetWinLine()
+
+    public void AnimationPlay()
     {
-        if (winSprite != null)
+        bool checkTrue = false;
+        while (nubmerOfWinSymbol.TryDequeue(out var numWinSym))
         {
-            Vector3 vector = new Vector3(winSymbol.position.x, winSymbol.position.y);
-            winLine.SetPosition(idReel, vector);
-            AnimationPlay();
+            checkTrue = true;
+            var winSymbol = symbolsRectTransform[numWinSym];
+            symbolsRectTransform.Remove(numWinSym);
+            Vector3 vector = new Vector3(scaleAnimation, scaleAnimation, scaleAnimation);
+            winSymbol.DOPunchScale(vector,countAnimation, countAnimation,timeAnimation)
+            //winSymbol.DOShakeScale(scaleAnimation, 1,10,0,false)
+                .OnComplete(() =>
+                {
+                    foreach (var symbol in symbols)
+                    {
+                        var symbolCL = symbolsImage[symbol];
+                        Color color = new Color(1f, 1f, 1f, 1f);
+                        symbolCL.DOColor(color, timeAnimation);
+                    }
+                    reel.PlayButtonOn();
+                });
         }
-        else
+        for (int i = 0; i < 3; i++)
+        {
+            if (symbolsRectTransform.ContainsKey(i) && checkTrue)
+            {
+                var symbolCL = symbolsImage[symbolsRectTransform[i]];
+                Color color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+                symbolCL.DOColor(color, timeAnimation);
+            }
+        }
+        if (!checkTrue)
         {
             reel.PlayButtonOn();
         }
-    }
-
-    void AnimationPlay()
-    {
-        if (winSprite != null)
-        {
-            foreach (var symbol in symbols)
-            {
-                if (symbol != winSymbol)
-                {
-                    var symbolCL = symbolsImage[symbol];
-                    Color color = new Color(0.5f, 0.5f, 0.5f, 0.5f);
-                    symbolCL.DOColor(color, timeAnimation);
-
-                }
-            }
-            winSymbol.DOScale(scaleAnimation, timeAnimation)
-            .OnComplete(() =>
-            {
-                winSymbol.DOScale(1.0f, timeAnimation)
-                .OnComplete(()=> 
-                {
-                    winSymbol.DOScale(scaleAnimation, timeAnimation)
-                    .OnComplete(() =>
-                    {
-                        winSymbol.DOScale(1.0f, timeAnimation)
-                        .OnComplete(() =>
-                        {
-                            foreach (var symbol in symbols)
-                            {
-                                var symbolCL = symbolsImage[symbol];
-                                Color color = new Color(1f, 1f, 1f, 1f);
-                                symbolCL.DOColor(color, timeAnimation);
-                            }
-                            reel.PlayButtonOn();
-                        });
-                    });
-                });
-            });
-        }
-    }
-
-    public void ClearWinLine()
-    {
-        winLine.positionCount = 0;
     }
 
     public float GetSymbolSize()
@@ -189,5 +153,24 @@ public class SymbolsMove : MonoBehaviour
     public void SetRandomFalse()
     {
         setRandom = false;
+    }
+    public Sprite[] GetWinSymbolOnReel()
+    {
+        return stopSprites.ToArray();
+    }
+    public int GetIdReel()
+    {
+        return idReel;
+    }
+    public void SetWinLinePos(LineRenderer line,int winSprite)
+    {
+        var winSymbol = symbolsRectTransform[winSprite];
+        if (!nubmerOfWinSymbol.Contains(winSprite))
+        {
+            nubmerOfWinSymbol.Enqueue(winSprite);
+            print("id: " + idReel + " winSprite: " + winSprite);
+        }
+        Vector3 vector = new Vector3(winSymbol.position.x, winSymbol.position.y);
+        line.SetPosition(idReel, vector);
     }
 }
